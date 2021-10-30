@@ -1,30 +1,3 @@
-<?php
-    $db = new SQLite3('db/wichteln2');
-
-if($_REQUEST['oldname']) {
-    $db->query("UPDATE participants SET assigned = 0 WHERE name = '{$_REQUEST['oldname']}'");
-}
-    $index = 1;
-    $res = $db->query('SELECT * FROM participants');
-    while ($row = $res->fetchArray()) {
-        $array[$row['name']] = $row['assigned'];
-        if($_REQUEST['oldname'] && $_REQUEST['oldname']==$row['name']) {
-            $array[$row['name']] = 1;
-        }
-    }
-    $filtered_array = array_filter($array, function($var) {  return !$var; });
-    if(count($filtered_array) > 0){
-        $name = array_rand($filtered_array);
-        $db->query("UPDATE participants SET assigned = 1 WHERE name = '{$name}'");
-        $pos = array_search($name, array_keys($array));
-    } else {
-        //$db->query("UPDATE participants SET assigned = 0");
-        $pos = -1;
-    }
-
-?>
-
-
 <html>
     <head>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
@@ -53,38 +26,44 @@ if($_REQUEST['oldname']) {
                     font-size:1.3em;
                 }
 
+                #startButton {
+                     /* TODO: Position startButton in a proper way */
+                }
+
                
                 .wrapper {
                     margin-top:14em;
                     margin-left:1,6em;
                     perspective: 1000px;
                     perspective-origin: 50% 50%;                
-                
                 }        
+
                 .tombola {
-                position: relative;
-                width: 90%;
-                height: 200px;
-                margin: 120px auto;
-                transform-style: preserve-3d;
-                transform-origin: center center -480px;
-                transform: rotateX(0deg) translateZ(-480px);
-                transition: 4s ease all;
+                    display: none;
+                    position: relative;
+                    width: 90%;
+                    height: 200px;
+                    margin: 120px auto;
+                    transform-style: preserve-3d;
+                    transform-origin: center center -480px;
+                    transform: rotateX(0deg) translateZ(-480px);
+                    transition: 4s ease all;
                 }
+
                 .panel {
-                top: 0px;
-                padding: 60px;
-                font-size: 40px;
-                font-weight: bold;
-                text-transform: uppercase;
-                position: absolute;
-                width: 90%;
-                height: 200px;
-                color: white;
-                text-align: center;
-                line-height: 2em;
-                background: #94DBAF;
-                border: 1px solid #297a48;
+                    top: 0px;
+                    padding: 60px;
+                    font-size: 40px;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    position: absolute;
+                    width: 90%;
+                    height: 200px;
+                    color: white;
+                    text-align: center;
+                    line-height: 2em;
+                    background: #94DBAF;
+                    border: 1px solid #297a48;
                 }
                 .p1 {
                     transform: translateZ(240px);
@@ -131,53 +110,97 @@ if($_REQUEST['oldname']) {
                     display:block;
                 }
 
+                #drawFinished {
+                    display: none;
+                }
+
         </style>
         <script
   src="https://code.jquery.com/jquery-3.6.0.min.js"
   integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
   crossorigin="anonymous"></script>
-       
     </head>
     <body>
       
         <div class="wrapper">
-            <?php if($pos == -1) {  ?>
-                <h2>Die Auslosung ist beendet</h2>
-            <?php } else { ?>
-        <div class="tombola">
-            <?php foreach($array as $nam => $assigned) { ?>
-                <div class="panel p<?php echo $index; ?>"><?php echo $nam; ?></div>
-            <?php $index++; } ?>
-          
-        </div>
-        <?php } ?>
-        </div>
+            <h2 id="drawFinished">Die Auslosung ist beendet</h2>
+            <div class="tombola">
 
+            </div>
+            <button type="button" id="startButton" class="btn btn-primary" onclick="populateTombolaWithData(data)">Klick und hol dir dein Wichtel ab, du Kek.</button>
+           
+        </div>
 
     </body>
 </html>
 
 <script type="text/javascript">
-            // Script to randomise the panel the tombola lands on
-            $(document).ready(function(){
+
+    var data = null;
+
+    function showMessageDrawIsFinished() {
+        $("#drawFinished").show();
+    }
+
+    function showTombola() {
+        $(".tombola").show();
+    }
+
+    function populateTombolaWithData(data) {
+        $("#startButton").hide();
+
+        queryServer(function(data) {
+            console.log(data);
+            this.data = data;
+            if (data.pickedPos == -1) {
+                return showMessageDrawIsFinished();
+            } else {
+                var index = 1;
                 var rotation = [1440,1485,1530,1575,1620,1665,1710,1755];
-                //var pick = Math.floor(Math.random()*8);
-                var pick = <?php echo $pos; ?>;
-                var spin = rotation[pick];
-                $('.tombola').css({'transform':'rotateX('+spin+'deg) translateZ(-480px)'});
-                setTimeout(callback, 7000); //Ruft die Callback-Funktion nach 3 Sekunden auf
-
-            });
-
-            function callback() {
-                if(confirm("Du hast <?php echo $name ?> gezogen. Bist du das selbst?")) {
-                    if(confirm("Dann wird jetzt nochmal gelost")) {
-                        window.location.href = "?oldname=<?php echo $name ?>";
-                    }
-                } else {
-                    alert("Dann ist es amtlich. Dein Wichtel ist: <?php echo $name; ?>. Schließe jetzt die Seite!");
+                for (var i = 0; i < data.participants.length; i++) {
+                    participant = data.participants[i];
+                    var pEntry = "<div class='panel p" + index + "'>" + participant + "</div>";
+                    $(".tombola").append(pEntry);
+                    index++;
                 }
+                $(".tombola").show();
+
+                var pick = data["pickedPos"]
+                var spin = rotation[pick];
+                setTimeout(function() {
+                    $('.tombola').css({'transform':'rotateX('+spin+'deg) translateZ(-480px)'});
+                }, 100)
+
+                setTimeout(callback, 7000, data.pickedName);
             }
 
+        });       
+    }
 
-        </script>
+    function queryServer(done) {
+        $.ajax({
+            url: "participants.php",
+        }).then(function(data) {
+            done(data);
+        });
+    }
+
+    /** Kann benutzt werden, wenn es wirklich gewollt ist, dass man noch mal rollen kann. */
+    function rollbackSetEntry(name) {
+        $.ajax({
+            url: "rollback.php?name=" + name
+        }).then(function(successful) {
+            console.log(successful);
+            // TODO: Check, ob successful true ist.
+            // Dann: Lade Seite neu
+            location.reload();
+        })
+    }
+    
+
+    function callback(name) {
+        alert("Damit ist es amtlich. Dein Wichtel ist " + name);
+    }
+
+
+</script>
